@@ -30,3 +30,9 @@ You can use the `ZOE_LOGGER_KAFKA_BROKER` environment variable to pass the Kafka
  ```
  docker run -d -p 12201:12201/udp -e ZOE_LOGGER_KAFKA_BROKER=localhost:9092 --restart=always zoerepo/zoe-logger
  ```
+
+## Reading logs
+
+The `showlog.py` script can be used to look at logs stored in Kafka. Each container logs to its own topic. The script is able to list all topics and do the equivalent of `tail -f` on a specific topic.
+
+Use `showlog.py --help` for more details.
