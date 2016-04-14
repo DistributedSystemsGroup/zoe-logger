@@ -7,7 +7,7 @@ The output is composed of one syslog-like line per log message containing most o
 
 The output produced by containers in a Swarm cluster is difficult to manage at scale. On one side you need to save the output for auditing and analysis, on the other you want to have real-time access to the output of your processes, most often of a single container when there is a problem to debug.
 
-Kafka provides a nice way to cater for both needs, but unfortunately Docker does not support Kafka directly as a log destination. This is why this daemon was born.
+Kafka provides a nice way to cater for both needs, but unfortunately Docker [does not support Kafka directly](https://github.com/docker/docker/issues/21271) as a log destination. This is why this daemon was born.
 
  ## Configuration
 
