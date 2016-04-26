@@ -48,6 +48,8 @@ def udp_listener(kafka_producer):
         try:
             server = ZoeLoggerUDPServer(("0.0.0.0", 12201), GELFUDPHandler, kafka_producer)
             server.serve_forever()
+        except KeyboardInterrupt:
+            break
         except:
             log.exception('Exception in UDP listener')
 
