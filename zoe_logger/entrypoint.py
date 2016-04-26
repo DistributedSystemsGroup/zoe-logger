@@ -29,7 +29,6 @@ log = logging.getLogger("main")
 class GELFUDPHandler(socketserver.DatagramRequestHandler):
     def handle(self):
         data = self.rfile.read()
-        data = gzip.decompress(data)
         data = json.loads(data.decode('utf-8'))
         service_id = '.'.join([data['_zoe.service.name'], data['_zoe.execution.name'], data['_zoe.owner'], data['_zoe.deployment_name']])
         log_line = ' '.join([str(data['timestamp']), data['host'], service_id, data['short_message']])
