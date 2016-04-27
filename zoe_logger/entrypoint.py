@@ -36,7 +36,7 @@ class GELFUDPHandler(socketserver.DatagramRequestHandler):
         # log.debug(log_line)
 
 
-class ZoeLoggerUDPServer(socketserver.ThreadingUDPServer):
+class ZoeLoggerUDPServer(socketserver.UDPServer):
     def __init__(self, server_address, handler_class, kafka_producer):
         self.allow_reuse_address = True
         super().__init__(server_address, handler_class)
