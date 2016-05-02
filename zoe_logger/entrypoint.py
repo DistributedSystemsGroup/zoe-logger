@@ -19,7 +19,8 @@ import logging
 import socketserver
 import json
 import gzip
-import kafka
+import psycopg2
+import datetime
 
 from zoe_logger.config import load_configuration, get_conf
 
@@ -29,24 +30,25 @@ log = logging.getLogger("main")
 class GELFUDPHandler(socketserver.DatagramRequestHandler):
     def handle(self):
         data = self.rfile.read()
+        data = gzip.decompress(data)
         data = json.loads(data.decode('utf-8'))
-        service_id = '.'.join([data['_zoe.service.name'], data['_zoe.execution.name'], data['_zoe.owner'], data['_zoe.deployment_name']])
-        log_line = ' '.join([str(data['timestamp']), data['host'], service_id, data['short_message']])
-        self.server.kafka_producer.send(topic=service_id, value=log_line.encode('utf-8'))
-        # log.debug(log_line)
+        # log.debug(data)
+        self.server.cursor.execute('INSERT INTO logs (container_name, image_name, host, container_id, timestamp, message) VALUES (%s,%s,%s,%s,%s,%s)', (data['_container_name'], data['_image_name'], data['host'], data['_container_id'], datetime.datetime.fromtimestamp(data['timestamp']), data['short_message']))
+        self.server.db_conn.commit()
 
 
 class ZoeLoggerUDPServer(socketserver.UDPServer):
-    def __init__(self, server_address, handler_class, kafka_producer):
+    def __init__(self, server_address, handler_class, db_conn):
         self.allow_reuse_address = True
         super().__init__(server_address, handler_class)
-        self.kafka_producer = kafka_producer
+        self.db_conn = db_conn
+        self.cursor = db_conn.cursor()
 
 
-def udp_listener(kafka_producer):
+def udp_listener(db_conn):
     while True:
         try:
-            server = ZoeLoggerUDPServer(("0.0.0.0", 12201), GELFUDPHandler, kafka_producer)
+            server = ZoeLoggerUDPServer(("0.0.0.0", 12201), GELFUDPHandler, db_conn)
             server.serve_forever()
         except KeyboardInterrupt:
             break
@@ -54,8 +56,21 @@ def udp_listener(kafka_producer):
             log.exception('Exception in UDP listener')
 
 
-def setup_kafka():
-    return kafka.KafkaProducer(bootstrap_servers=get_conf().kafka_broker)
+def setup_postgres():
+    conn = psycopg2.connect(database='docker_logs', user='postgres', password='zoepostgres', host='192.168.45.252')
+    cursor = conn.cursor()
+    cursor.execute("""CREATE TABLE IF NOT EXISTS logs (
+                        id BIGSERIAL PRIMARY KEY,
+                        container_name TEXT NOT NULL,
+                        image_name TEXT NOT NULL,
+                        host TEXT NOT NULL,
+                        container_id TEXT NOT NULL,
+                        timestamp TIMESTAMP NOT NULL,
+                        message TEXT NOT NULL
+                    )""")
+    conn.commit()
+    cursor.close()
+    return conn
 
 
 def main():
@@ -67,11 +82,8 @@ def main():
     args = get_conf()
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
-
     else:
         logging.basicConfig(level=logging.INFO)
 
-    logging.getLogger('kafka').setLevel(logging.WARN)
-
-    kafka_producer = setup_kafka()
-    udp_listener(kafka_producer)
+    db_conn = setup_postgres()
+    udp_listener(db_conn)

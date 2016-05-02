@@ -32,7 +32,12 @@ def load_configuration(test_conf=None):
                                    args_for_setting_config_path=["--config"],
                                    args_for_writing_out_config_file=["--write-config"])
         argparser.add_argument('--debug', action='store_true', help='Enable debug output')
-        argparser.add_argument('--kafka-broker', help='Address of the Kafka broker to send logs to', default='localhost:9092')
+        argparser.add_argument('--dbname', help='Database name', default='docker_logs')
+        argparser.add_argument('--table_name', help='Table name', default='logs')
+        argparser.add_argument('--db_user', help='DB username', default='postgres')
+        argparser.add_argument('--db_pass', help='DB password', default='postgres')
+        argparser.add_argument('--db_host', help='DB host', default='localhost')
+        argparser.add_argument('--db_port', help='DB host', type=int, default=5432)
 
         opts = argparser.parse_args()
         if opts.debug:
