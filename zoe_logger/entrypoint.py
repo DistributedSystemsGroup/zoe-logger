@@ -19,20 +19,26 @@ import logging
 import socketserver
 import json
 import gzip
-import kafka
+import pykafka
 
 from zoe_logger.config import load_configuration, get_conf
 
 log = logging.getLogger("main")
+LOG_FORMAT = '%(asctime)-15s %(levelname)s %(name)s (%(threadName)s): %(message)s'
 
 
 class GELFUDPHandler(socketserver.DatagramRequestHandler):
     def handle(self):
         data = self.rfile.read()
-        data = json.loads(data.decode('utf-8'))
-        service_id = '.'.join([data['_zoe.service.name'], data['_zoe.execution.name'], data['_zoe.owner'], data['_zoe.deployment_name']])
-        log_line = ' '.join([str(data['timestamp']), data['host'], service_id, data['short_message']])
-        self.server.kafka_producer.send(topic=service_id, value=log_line.encode('utf-8'))
+        data = gzip.decompress(data)
+        parsed_data = json.loads(data.decode('utf-8'))
+#        service_id = '.'.join([data['_zoe.service.name'], data['_zoe.execution.name'], data['_zoe.owner'], data['_zoe.deployment_name']])
+#        log_line = ' '.join([str(data['timestamp']), data['host'], service_id, data['short_message']])
+        with self.server.kafka_producer.get_producer() as producer:
+            if 'host' in parsed_data:
+                producer.produce(data, partition_key=parsed_data['host'].encode('utf-8'))
+            else:
+                producer.produce(data, partition_key=b'no_host')
         # log.debug(log_line)
 
 
@@ -55,7 +61,8 @@ def udp_listener(kafka_producer):
 
 
 def setup_kafka():
-    return kafka.KafkaProducer(bootstrap_servers=get_conf().kafka_broker)
+    client = pykafka.KafkaClient(hosts=get_conf().kafka_broker)
+    return client.topics[b'docker_logs']
 
 
 def main():
@@ -66,12 +73,11 @@ def main():
     load_configuration()
     args = get_conf()
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-
+        logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    logging.getLogger('kafka').setLevel(logging.WARN)
+#    logging.getLogger('kafka').setLevel(logging.WARN)
 
     kafka_producer = setup_kafka()
     udp_listener(kafka_producer)
