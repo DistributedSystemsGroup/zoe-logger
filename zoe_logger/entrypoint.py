@@ -20,6 +20,7 @@ import socketserver
 import json
 import gzip
 import pykafka
+import pykafka.common
 
 from zoe_logger.config import load_configuration, get_conf
 
@@ -29,24 +30,24 @@ LOG_FORMAT = '%(asctime)-15s %(levelname)s %(name)s (%(threadName)s): %(message)
 
 class GELFUDPHandler(socketserver.DatagramRequestHandler):
     def handle(self):
+        log.debug('UDP packet received')
         data = self.rfile.read()
         data = gzip.decompress(data)
         parsed_data = json.loads(data.decode('utf-8'))
 #        service_id = '.'.join([data['_zoe.service.name'], data['_zoe.execution.name'], data['_zoe.owner'], data['_zoe.deployment_name']])
 #        log_line = ' '.join([str(data['timestamp']), data['host'], service_id, data['short_message']])
-        with self.server.kafka_producer.get_producer() as producer:
-            if 'host' in parsed_data:
-                producer.produce(data, partition_key=parsed_data['host'].encode('utf-8'))
-            else:
-                producer.produce(data, partition_key=b'no_host')
+        if 'host' in parsed_data:
+            self.server.kafka_producer.produce(data, partition_key=parsed_data['host'].encode('utf-8'))
+        else:
+            self.server.kafka_producer.produce(data, partition_key=b'no_host')
         # log.debug(log_line)
 
 
 class ZoeLoggerUDPServer(socketserver.UDPServer):
-    def __init__(self, server_address, handler_class, kafka_producer):
+    def __init__(self, server_address, handler_class, kafka_topic):
         self.allow_reuse_address = True
         super().__init__(server_address, handler_class)
-        self.kafka_producer = kafka_producer
+        self.kafka_producer = kafka_topic.get_producer()
 
 
 def udp_listener(kafka_producer):
