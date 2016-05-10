@@ -1,0 +1,109 @@
+<html>
+<head>
+    <title>Log interface</title>
+    <link rel="stylesheet" href="/static/style.css" type="text/css">
+    <script src="/static/jquery-2.1.4.min.js" type="application/javascript"></script>
+    <script src="/static/moment.min.js" type="application/javascript"></script>
+    <script type="application/javascript">
+        function populate_container_list() {
+            $('#container_list').children().remove();
+            $.getJSON("/api/container_list")
+                    .done(function (data) {
+                        for (i in data) {
+                            $('#container_list').append('<option value="' + data[i] + '">' + data[i] + '</option>');
+                        }
+                        $(function() {
+                            $('#container_list').filterByText($('#select_filter'));
+                        });
+                    })
+        }
+
+        var last_id = 0;
+        var DEFAULT_LOG_COUNT = 50;
+        function get_log(count) {
+            scrolled = false;
+            var selected = $('#container_list').find(":selected");
+            if (selected.length == 0)
+                return;
+            var count_arg = "&count=" + count;
+            $.getJSON("/api/container_log?container_name=" + selected.val() + count_arg + '&last_id=' + last_id).done(function (data) {
+                for (i in data) {
+                    var ts = moment(data[i][0], "X");
+                    $('#logarea').append(ts.format('D MMM YYYY HH:mm:ss.SSS') + ": " + data[i][1] + '\n');
+                    if (last_id < data[i][2]) {
+                        last_id = data[i][2]
+                    }
+                }
+                if (data.length > 0) {
+                    updateScroll();
+                }
+            });
+        }
+
+        var scrolled = false;
+        function updateScroll() {
+            if (!scrolled) {
+                var element = document.getElementById("logarea");
+                element.scrollTop = element.scrollHeight;
+            }
+        }
+
+        function refresh() {
+            get_log(-1);
+        }
+
+        $(document).ready(function () {
+            populate_container_list();
+            $('#refresh_container_list').on('click', function () {
+                populate_container_list();
+                $("#select_filter").val('');
+            });
+            $('#container_list').on('change', function () {
+                $('#logarea').empty();
+                last_id = 0;
+                get_log(DEFAULT_LOG_COUNT)
+            });
+            $("#logarea").on('scroll', function () {
+                scrolled = true;
+            });
+
+            setInterval(refresh, 1000);
+        });
+    </script>
+    <script>
+        jQuery.fn.filterByText = function (textbox) {
+            return this.each(function () {
+                var select = this;
+                var options = [];
+                $(select).find('option').each(function () {
+                    options.push({value: $(this).val(), text: $(this).text()});
+                });
+                $(select).data('options', options);
+
+                $(textbox).bind('change keyup', function () {
+                    var options = $(select).empty().data('options');
+                    var search = $.trim($(this).val());
+                    var regex = new RegExp(search, "gi");
+
+                    $.each(options, function (i) {
+                        var option = options[i];
+                        if (option.text.match(regex) !== null) {
+                            $(select).append(
+                                    $('<option>').text(option.text).val(option.value)
+                            );
+                        }
+                    });
+                });
+            });
+        };
+    </script>
+</head>
+<body>
+<div>
+    <input type="text" id="select_filter">
+    <span id="refresh_container_list">Reload</span><br/>
+    <select name="container_list" id="container_list" size="2"></select>
+    <pre id="logarea"></pre>
+</div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+#refresh_container_list {
+    border: 1px solid #000;
+    padding: 0px 5px;
+}
+
+#container_list {
+    float: left;
+    height: 95%;
+    width: 280px;
+    overflow: auto;
+}
+
+#logarea {
+    font-size: smaller;
+    font-family: Consolas, monospace;
+    float: left;
+    width: 80%;
+    height: 95%;
+    overflow: auto;
+    margin-left: 10px;
+}

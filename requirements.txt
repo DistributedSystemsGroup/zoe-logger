@@ -1,2 +1,5 @@
 pykafka
 psycopg2
+tornado
+momoko
+
