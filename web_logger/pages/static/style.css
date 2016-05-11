@@ -1,6 +1,7 @@
 #refresh_container_list {
     border: 1px solid #000;
     padding: 0px 5px;
+    cursor: pointer;
 }
 
 #container_list {
