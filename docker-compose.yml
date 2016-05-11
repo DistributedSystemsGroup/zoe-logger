@@ -1,0 +1,43 @@
+version: '2'
+
+services:
+  log-listener:
+    image: log-listener
+    build:
+      context: .
+      command: python3 /opt/zoe-logger/zoe-logger.py
+    environment:
+     - ZOE_LOGGER_DEBUG=true
+     - ZOE_LOGGER_KAFKA-BROKER=192.168.45.252:9092
+    ports:
+     - 12201:12201/udp
+    restart: always
+
+  log-producer:
+    image: log-producer
+    build:
+      context: .
+      command: python3 /opt/zoe-logger/pq-consumer.py
+    restart: always
+    environment:
+     - PQ_CONSUMER_DEBUG=true
+     - PQ_CONSUMER_KAFKA-BROKER=192.168.45.252:9092
+     - PQ_CONSUMER_DB_NAME=docker_logs
+     - PQ_CONSUMER_DB_USER=postgres
+     - PQ_CONSUMER_DB_PASS=postgres
+     - PQ_CONSUMER_DB_HOST=192.168.45.252
+
+  log-web:
+    image: log-web
+    build:
+      context: .
+      command: python3 /opt/zoe-logger/web.py
+    restart: always
+    environment:
+     - ZOE_WEB_DEBUG=true
+     - ZOE_WEB_DB_NAME=docker_logs
+     - ZOE_WEB_DB_HOST=192.168.45.252
+     - ZOE_WEB_DB_USER=postgres
+     - ZOE_WEB_DB_PASS=postgres
+    ports:
+     - 6577:6577
